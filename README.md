@@ -18,11 +18,11 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 ## Features
 - ✅ Grid / List view modes with zoom scaling
 - ✅ Pin games and filter to show only pinned ones
-- ✅ Display internal NDS Title and GameCode (read from ROM header)
+- ✅ Display internal ROM Title and Game ID
 - ✅ Right-side info panel: cover, path, ID
-- ✅ Language toggle (zh/en), using `lang.png`
+- ✅ Language toggle (zh/en)
 - ✅ One-click to launch melonDS with the selected ROM
-- ✅ Dark UI theme / smooth scrolling / DPI awareness (Windows)
+- ✅ Dark UI theme / smooth scrolling
 
 ---
 
