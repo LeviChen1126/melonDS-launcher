@@ -37,7 +37,7 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 ### Method 2:
 1. Clone this repository:
    ```bash
-   git clone https://github.com/<YOUR_GITHUB>/melonDS-launcher.git
+   git clone https://github.com/LeviChen1126/melonDS-launcher.git
    cd melonDS-launcher
    ```
 
