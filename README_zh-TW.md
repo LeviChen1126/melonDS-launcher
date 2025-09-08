@@ -29,7 +29,7 @@
 ## 安裝 / 使用範例
 
 ### 方法一：
-1. 至 [Releases]() 下載最新的 `melonDS-launcher.exe`  
+1. 至 [Releases](https://github.com/LeviChen1126/melonDS-launcher/releases) 下載最新的 `melonDS-launcher.exe`  
 2. 直接雙擊執行 `melonDS-launcher.exe`
    - 首次啟動可能需要幾秒鐘（因為 Onefile 會先解壓到暫存資料夾）。
    - 如果防毒軟體跳警告，請先確認來源安全再允許。
