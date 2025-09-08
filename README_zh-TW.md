@@ -37,7 +37,7 @@
 ### 方法二：
 1. 下載或 Clone：
    ```bash
-   git clone https://github.com/<YOUR_GITHUB>/melonDS-launcher.git
+   git clone https://github.com/LeviChen1126/melonDS-launcher.git
    cd melonDS-launcher
    ```
 
