@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Packaging / Build
+build/
+dist/
+*.spec
+
+# Logs / Runtime
+*.log
+logs/
+.cache/
+.tmp/
+.tmp*/
+
+# App specific
+config/melonds_launcher_config.json
+config/covers_map.json
+config/titles_map.json

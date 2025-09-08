@@ -1,0 +1,36 @@
+# Normalize text files and handle line endings
+*               text=auto
+
+# Force LF for scripts / configs
+*.py            text eol=lf
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.md            text eol=lf
+*.json          text eol=lf
+*.toml          text eol=lf
+*.cfg           text eol=lf
+
+# Windows batch files keep CRLF
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+
+# Binary assets
+*.ico           binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.bmp           binary
+*.ttf           binary
+*.otf           binary
+*.zip           binary
+
+# Treat these directories as binary (no diffs)
+assets/**       binary
+dist/**         binary
+build/**        binary
+
+# GitHub Linguist hints
+strict_build_kit/** linguist-vendored
+docs/**             linguist-documentation
