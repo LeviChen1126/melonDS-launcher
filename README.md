@@ -29,7 +29,7 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 ## Installation / Usage Example
 
 ### Method 1:
-1. Download the latest `melonDS-launcher.exe` from [Releases](https://github.com/<YOUR_GITHUB>/melonDS-launcher/releases).  
+1. Download the latest `melonDS-launcher.exe` from [Releases](https://github.com/LeviChen1126/melonDS-launcher/releases).  
 2. Double-click `melonDS-launcher.exe` to run.  
    - The first startup may take a few seconds (due to Onefile extraction).  
    - If your antivirus shows a warning, please verify the source and allow execution.  
