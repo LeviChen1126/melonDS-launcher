@@ -8,6 +8,7 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 > ⚠️ This project is **not affiliated with the official melonDS team**, it is a personal utility tool.  
 > **No ROMs or game images are included** — users must provide their own and ensure legality.
 
+[Demo.gif](./images/demo.gif)
 <a href="images/demo.gif">
     <img src="images/demo.gif" width="1000" alt="GUI Demo">
 </a>  
