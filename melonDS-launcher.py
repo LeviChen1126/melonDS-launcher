@@ -172,50 +172,36 @@ class LauncherApp(tk.Tk):
         return Path(filename)
 
     def _set_app_icon(self):
-        try:
-            nds_path = self._resolve_asset_path("nds.png")
-            if nds_path and nds_path.exists():
-                try:
-                    if PIL_OK:
-                        ph = ImageTk.PhotoImage(Image.open(nds_path))
-                    else:
-                        ph = tk.PhotoImage(file=str(nds_path))
-                    self.iconphoto(True, ph)
-                    try: self.wm_iconphoto(True, ph)
-                    except Exception: pass
-                except Exception:
-                    pass
-                try:
-                    import ctypes
-                    if platform.system() == "Windows" and PIL_OK:
-                        base_im = Image.open(nds_path).convert("RGBA")
-                        def to_square(im, size):
-                            from PIL import Image as _I
-                            canvas = _I.new("RGBA", (size, size), (0,0,0,0))
-                            ratio = min(size / im.width, size / im.height)
-                            new_w = max(1, int(im.width * ratio))
-                            new_h = max(1, int(im.height * ratio))
-                            im2 = im.resize((new_w, new_h), Image.LANCZOS)
-                            x = (size - new_w)//2; y = (size - new_h)//2
-                            canvas.paste(im2, (x,y), im2)
-                            return canvas
-                        ico128 = to_square(base_im, 128)
-                        ico256 = to_square(base_im, 256)
-                        ico_tmp = Path("./assets/nds.ico")
-                        ico_tmp.parent.mkdir(parents=True, exist_ok=True)
-                        ico128.save(ico_tmp, format="ICO", sizes=[(128,128),(256,256)], append_images=[ico256])
-                        try: ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("melonDS.Launcher")
-                        except Exception: pass
-                        try:
-                            self.iconbitmap(default=str(ico_tmp))
-                            try: self.tk.call("wm", "iconbitmap", self._w, str(ico_tmp))
-                            except Exception: pass
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # 1) 優先使用 .ico 供標題列小圖示（Windows）
+        ico_path = self._resolve_asset_path("assets/nds.ico")
+        if ico_path.exists():
+            try:
+                # 這行對「標題列左上角的小 icon」最關鍵
+                self.iconbitmap(default=str(ico_path))
+            except Exception:
+                pass
+
+        # 2) 再用 PNG/JPG 設定 iconphoto，影響 Alt-Tab / 工作列縮圖
+        #    （不會影響標題列小 icon，但加上較漂亮）
+        png_path = self._resolve_asset_path("assets/nds.png")
+        if png_path.exists():
+            try:
+                if PIL_OK:
+                    im = Image.open(png_path).convert("RGBA")
+                    ph = ImageTk.PhotoImage(im)
+                else:
+                    ph = tk.PhotoImage(file=str(png_path))
+                self.iconphoto(True, ph)
+            except Exception:
+                pass
+
+        # 3) （可選）在 Windows 設定 AppUserModelID，讓工作列群組化正確
+        if platform.system() == "Windows":
+            try:
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("melonDS.Launcher")
+            except Exception:
+                pass
 
     PADDING_BORDER = 2
     BREAKPOINTS = [
