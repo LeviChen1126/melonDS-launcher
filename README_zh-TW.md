@@ -16,13 +16,13 @@
 ---
 
 ## 功能特色
-- ✅ Grid / List 兩種檢視、比例縮放滑桿
+- ✅ Grid / List 兩種檢視、比例縮放
 - ✅ 釘選遊戲、只顯示釘選
-- ✅ 顯示 NDS 內部標題與 GameCode（讀檔頭）
+- ✅ 顯示 ROM 內部標題與 Game ID
 - ✅ 右側資訊面板：封面、路徑、ID
-- ✅ 中英切換（zh/en），按鈕 `lang.png`
+- ✅ 中英切換（zh/en）
 - ✅ 一鍵開啟 melonDS 並載入所選 ROM
-- ✅ 深色 UI / 捲動優化 / DPI 感知（Windows）
+- ✅ 深色 UI / 捲動優化
 
 ---
 
