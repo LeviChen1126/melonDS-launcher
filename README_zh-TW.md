@@ -8,6 +8,7 @@
 > ⚠️ 本專案與 melonDS 官方無關，僅為個人開發的工具程式。  
 > 本專案 **不包含任何 ROM 或遊戲圖片**；使用者需自行提供，並負責其合法性。
 
+[Demo.gif](./images/demo.gif)
 <a href="images/demo.gif">
     <img src="images/demo.gif" width="1000" alt="GUI Demo">
 </a>  
