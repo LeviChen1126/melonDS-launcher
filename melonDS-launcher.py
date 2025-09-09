@@ -339,6 +339,16 @@ class LauncherApp(tk.Tk):
         except Exception:
             pass
 
+    def _ensure_title_for(self, rom_path: Path):
+        """若 titles_map 無此遊戲，先以檔名初始化並寫回 titles_map.json。"""
+        try:
+            gid = game_id_for(rom_path)
+            if not self.titles_map.get(gid):
+                self.titles_map[gid] = rom_path.stem
+                save_json(self.titles_path, self.titles_map)
+        except Exception:
+            pass
+
     def _apply_dark_titlebar(self):
         if platform.system() != "Windows":
             return
@@ -615,11 +625,13 @@ class LauncherApp(tk.Tk):
         return (self._font_family(), size)
 
     def _display_name_for(self, rom_path: Path) -> str:
+        # 一律以 titles_map 為主；若尚未建立，先用檔名初始化
+        self._ensure_title_for(rom_path)
         gid = game_id_for(rom_path)
-        if gid in self.titles_map and self.titles_map[gid]:
-            return self.titles_map[gid]
-        title, _ = read_nds_info(rom_path)
-        return rom_path.stem or title or rom_path.name
+        name = self.titles_map.get(gid)
+        if not name:
+            name = rom_path.stem  # 極端情況的保底
+        return name
 
     def _cover_path_for(self, rom_path: Path) -> Optional[Path]:
         gid = game_id_for(rom_path)
@@ -767,12 +779,24 @@ class LauncherApp(tk.Tk):
         if rom_dir and rom_dir.exists():
             for p in sorted(rom_dir.glob("**/*")):
                 if p.is_file() and p.suffix in SUPPORTED_EXTS:
-                    name = (self._display_name_for(p) + " " + p.name).lower()
-                    if query and (query not in name): continue
+                    # 先確保 titles_map 有值（以檔名初始化）
+                    self._ensure_title_for(p)
+                    disp = self._display_name_for(p)
+                    # 搜尋以顯示標題為主（也可加上檔名輔助）
+                    name_for_search = (disp + " " + p.name).lower()
+                    if query and (query not in name_for_search):
+                        continue
                     out.append(p)
+
         if bool(self.config.get("only_pinned", False)):
             out = [p for p in out if self._is_pinned(p)]
-        out = sorted(out, key=lambda x: (0 if self._is_pinned(x) else 1, x.name.lower()))
+
+        # 釘選優先，其次依 titles_map 的顯示名稱排序（忽略大小寫）
+        def sort_key(x: Path):
+            title = self._display_name_for(x).lower()
+            return (0 if self._is_pinned(x) else 1, title)
+
+        out = sorted(out, key=sort_key)
         return out
 
     def refresh_rom_list(self):
