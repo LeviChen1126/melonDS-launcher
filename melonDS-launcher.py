@@ -35,7 +35,7 @@ DEFAULT_CONFIG = {
     "pinned_files": [],
     "only_pinned": False,
     "last_dirs": {"rom":"", "melonds":"", "cover":""},
-    "lang": "zh",
+    "lang": "en",
     "thumb_dir": "covers/.thumb",
     "thumb_size": 256,
 }
