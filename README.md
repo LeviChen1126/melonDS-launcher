@@ -10,6 +10,8 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 > **No ROMs or game artwork are included** — users must provide their own and ensure legality.
 
 [Demo.gif](./images/demo.gif)  
+[Demo.mp4](./images/Demo.mp4)  
+
 <a href="images/demo.gif">
     <img src="images/demo.gif" width="1000" alt="GUI Demo">
 </a>  
