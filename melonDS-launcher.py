@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QInputDialog
 )
 
-APP_TITLE = "melonDS Launcher v2.1.1"
+APP_TITLE = "melonDS Launcher v2.1.2"
 CONFIG_FILE = "config/melonds_launcher_config.json"
 COVERS_MAP_FILE = "config/covers_map.json"
 TITLES_MAP_FILE = "config/titles_map.json"
@@ -232,7 +232,7 @@ class CoverFetcher(QObject):
                     self.found.emit(gid, str(saved))
             except Exception:
                 pass
-            # 小睡避免過度打伺服器
+            # 設定計時器，避免過度連線伺服器
             time.sleep(0.2)
         self.finished.emit()
 
@@ -468,7 +468,7 @@ class LauncherApp(QMainWindow):
         self.setCentralWidget(central)
 
         self.view = QListView()
-        self.view.setSelectionMode(QListView.SingleSelection)
+        self.view.setVerticalScrollMode(QListView.ScrollPerPixel)
         self.view.setSelectionBehavior(QListView.SelectItems)
         self.view.clicked.connect(lambda idx: self._refresh_details_panel())
         self.view.setUniformItemSizes(True)
@@ -729,12 +729,18 @@ class LauncherApp(QMainWindow):
         s = float(self.config.get("ui_scale", 1.0))
         if self._view_mode == "grid":
             self.view.setViewMode(QListView.IconMode)
-            self.view.setSpacing(int(12*s))
-            self.view.setIconSize(QSize(int(160*s), int(140*s)))
+            self.view.setVerticalScrollMode(QListView.ScrollPerPixel)
+            try:
+                self.view.verticalScrollBar().setSingleStep(int(80*s))
+            except Exception:
+                pass
         else:
             self.view.setViewMode(QListView.ListMode)
-            self.view.setSpacing(int(6*s))
-            self.view.setIconSize(QSize(int(148*s), int(112*s)))
+            self.view.setVerticalScrollMode(QListView.ScrollPerPixel)
+            try:
+                self.view.verticalScrollBar().setSingleStep(int(40*s))
+            except Exception:
+                pass
 
     def _toggle_lang(self):
         self.lang = "en" if self.lang == "zh" else "zh"
