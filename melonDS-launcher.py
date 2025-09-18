@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QInputDialog
 )
 
-APP_TITLE = "melonDS Launcher v2.1.0"
+APP_TITLE = "melonDS Launcher v2.1.1"
 CONFIG_FILE = "config/melonds_launcher_config.json"
 COVERS_MAP_FILE = "config/covers_map.json"
 TITLES_MAP_FILE = "config/titles_map.json"
@@ -1549,7 +1549,16 @@ class CardDelegate(QStyledItemDelegate):
 
         if is_grid:
             title_rect = QRect(r.left()+10, thumb_rect.bottom()+8, r.width()-20, int(40*s))
-            painter.drawText(title_rect, Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, disp_title_grid)
+
+            # 使用 QFontMetrics 限制兩行，超出加省略號
+            fm = QFontMetrics(f)
+            line_height = fm.lineSpacing()
+            max_height = line_height * 2
+            max_rect = QRect(title_rect.left(), title_rect.top(), title_rect.width(), max_height)
+
+            # 嘗試逐行換行，最多兩行
+            wrapped = fm.elidedText(disp_title_grid, Qt.ElideRight, max_rect.width()*2)  
+            painter.drawText(max_rect, Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, wrapped)
         else:
 
             # ---- List 模式：將「標題＋路徑」垂直置中 ----
