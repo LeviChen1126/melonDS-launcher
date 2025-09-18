@@ -21,6 +21,7 @@ It provides a graphical interface to scan ROMs, display covers and titles, pin f
 ## Features
 - ✅ Grid / List view modes with zoom scaling  
 - ✅ Pin games / filter to show only pinned ones  
+- ✅ Automatic Online Cover Download
 - ✅ Display internal ROM Title and Game ID  
 - ✅ NDS icon included in the launcher  
 - ✅ Right-side info panel: cover, path, ID  
