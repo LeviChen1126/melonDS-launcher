@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, json, subprocess, platform, hashlib, shutil, struct, ctypes
+import urllib.request, urllib.parse, time, re
 from pathlib import Path
 from typing import Any, Optional, Dict, List, Tuple
 
 from PySide6.QtCore import (Qt, QSize, QRect, QPoint, QSortFilterProxyModel,
-                            QAbstractListModel, QModelIndex, Signal, QObject, QEvent, QRegularExpression)
+                            QAbstractListModel, QModelIndex, Signal, QObject, QEvent, QRegularExpression, QThread)
 from PySide6.QtGui import (QGuiApplication, QIcon, QPixmap, QPainter, 
                            QFont, QAction, QActionGroup, QCursor, QFontMetrics, QColor, QPalette, QImage)
 from PySide6.QtWidgets import (
@@ -16,7 +17,7 @@ from PySide6.QtWidgets import (
     QInputDialog
 )
 
-APP_TITLE = "melonDS Launcher v2.0.0"
+APP_TITLE = "melonDS Launcher v2.1.0"
 CONFIG_FILE = "config/melonds_launcher_config.json"
 COVERS_MAP_FILE = "config/covers_map.json"
 TITLES_MAP_FILE = "config/titles_map.json"
@@ -38,6 +39,10 @@ DEFAULT_CONFIG = {
     "lang": "en",
     "thumb_dir": "covers/.thumb",
     "thumb_size": 256,
+    "auto_download_covers": True,
+    "cover_sources": ["libretro", "gametdb"],
+    "cover_timeout_sec": 10,
+
 }
 
 
@@ -201,6 +206,53 @@ class GameListModel(QAbstractListModel):
         g.title = title
         idx = self.index(row, 0)
         self.dataChanged.emit(idx, idx, [Qt.DisplayRole, Roles.Title])
+
+# ---- 線上封面自動抓取 ---- #
+class CoverFetcher(QObject):
+    found = Signal(str, str)   # (gid, cover_path)
+    finished = Signal()
+
+    def __init__(self, app, rom_paths):
+        super().__init__()
+        self.app = app
+        self.rom_paths = rom_paths
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        for rp in self.rom_paths:
+            if self._stop:
+                break
+            try:
+                saved = self.app._try_download_cover_for(rp)
+                if saved and Path(saved).exists():
+                    gid = game_id_for(rp)
+                    self.found.emit(gid, str(saved))
+            except Exception:
+                pass
+            # 小睡避免過度打伺服器
+            time.sleep(0.2)
+        self.finished.emit()
+
+
+def _http_get_to_file(url: str, out_path: Path, timeout_sec: int = 7) -> bool:
+    """以 HTTP 下載至檔案，成功回傳 True。"""
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "melonDS-launcher/2.0 (+https://example.local)"
+        })
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            if resp.status != 200:
+                return False
+            data = resp.read()
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_path, "wb") as f:
+                f.write(data)
+        return True
+    except Exception:
+        return False
 
 # ----------- 主視窗 ----------- #
 class LauncherApp(QMainWindow):
@@ -928,7 +980,13 @@ class LauncherApp(QMainWindow):
         self._refresh_details_panel()
         self._update_right_cover_size()
         self._update_right_nds_icon()
-
+        # 啟動自動封面抓取（背景）
+        try:
+            missing = [it.path for it in self.model._items if not self._cover_path_for(it.path)]
+            self._schedule_auto_fetch_covers(missing)
+        except Exception:
+            pass
+    
     def _refresh_details_panel(self):
         g = self._current_item()
         if not g:
@@ -1063,6 +1121,131 @@ class LauncherApp(QMainWindow):
             self.right_cover.setPixmap(QPixmap())
         return
 
+    # ---- 自動抓封面：啟動與更新 ---- #
+    def _schedule_auto_fetch_covers(self, rom_paths):
+        if not rom_paths:
+            return
+        if not bool(self.config.get("auto_download_covers", True)):
+            return
+        try:
+            self._fetch_thread = QThread(self)
+            self._fetch_worker = CoverFetcher(self, rom_paths)
+            self._fetch_worker.moveToThread(self._fetch_thread)
+            self._fetch_thread.started.connect(self._fetch_worker.run)
+            self._fetch_worker.found.connect(self._on_cover_found)
+            self._fetch_worker.finished.connect(self._fetch_thread.quit)
+            self._fetch_worker.finished.connect(lambda: setattr(self, "_fetch_worker", None))
+            self._fetch_thread.finished.connect(lambda: setattr(self, "_fetch_thread", None))
+            self._fetch_thread.start()
+        except Exception:
+            pass
+    
+    def _on_cover_found(self, gid: str, cover_path: str):
+        # 更新 covers_map.json
+        try:
+            self.covers_map[gid] = cover_path
+            save_json(self.map_path, self.covers_map)
+        except Exception:
+            pass
+        # 產生縮圖、更新 model 顯示
+        try:
+            self._ensure_thumb_for(Path(cover_path))
+        except Exception:
+            pass
+        # 在模型中找到對應項目並更新封面
+        try:
+            for i, it in enumerate(self.model._items):
+                if game_id_for(it.path) == gid:
+                    it.cover = Path(cover_path)
+                    sidx = self.model.index(i, 0)
+                    self.model.dataChanged.emit(sidx, sidx, [Roles.Cover])
+                    break
+        except Exception:
+            pass
+        # 如果右欄正好顯示同一款遊戲，刷新右欄封面
+        self._refresh_details_panel()
+
+    # ---- 嘗試下載指定 ROM 的封面 ---- #
+    def _try_download_cover_for(self, rom_path: Path) -> Optional[Path]:
+        # 若本地已存在就不再下載
+        exist = self._cover_path_for(rom_path)
+        if exist and Path(exist).exists():
+            return exist
+        timeout_sec = int(self.config.get("cover_timeout_sec", 7))
+        title_disp = self._display_name_for(rom_path)
+        code = (read_nds_info(rom_path)[1] or "").strip()
+        # 候選檔名（給 libretro）
+        # 1) 顯示名稱（把 _ 換成空白）
+        candidates = []
+        def add_cand(s):
+            s = (s or "").strip()
+            if s and s not in candidates:
+                candidates.append(s)
+        add_cand(title_disp.replace("_", " ").strip())
+        add_cand(rom_path.stem.replace("_", " ").strip())
+        # 嘗試移除檔名中中括號或大括號標籤
+        cleaned = re.sub(r"[\[\(\{].*?[\]\)\}]", "", rom_path.stem).replace("_", " ").strip()
+        if cleaned:
+            add_cand(cleaned)
+
+        # 先試 libretro 縮圖伺服器（Named_Boxarts -> Titles -> Snaps）
+        if "libretro" in (self.config.get("cover_sources") or ["libretro","gametdb"]):
+            for nm in candidates:
+                for named in ("Named_Boxarts", "Named_Titles", "Named_Snaps"):
+                    base = "https://thumbnails.libretro.com/Nintendo%20-%20Nintendo%20DS"
+                    url = f"{base}/{named}/{urllib.parse.quote(nm)}.png"
+                    dst = self.covers_path / f"{rom_path.stem}.png"
+                    if _http_get_to_file(url, dst, timeout_sec=timeout_sec):
+                        return dst
+
+        # 再試 GameTDB（用 4 碼遊戲代號）
+        if "gametdb" in (self.config.get("cover_sources") or ["libretro","gametdb"]) and code and len(code) == 4:
+            # 依最後一碼估計語系；再加常見語系輪詢
+            region_map = {
+                "J": ["JA","JP"],
+                "E": ["EN","US"],
+                "P": ["EN","EU","UK","FR","DE","ES","IT","NL"],
+                "D": ["DE"],
+                "F": ["FR"],
+                "I": ["IT"],
+                "S": ["ES"],
+                "K": ["KO"],
+                "C": ["ZHCN","ZHTW","EN"],
+            }
+            first_try = region_map.get(code[-1].upper(), [])
+            lang_list = first_try + ["EN","US","JA","JP","FR","DE","ES","IT","NL","PT","RU","KO","ZHCN","ZHTW"]
+            for lang in lang_list:
+                for size_dir in ("coverS", "coverM", "coverHQ", "cover"):
+                    for ext in (".png", ".jpg", ".JPG"):
+                        url = f"https://art.gametdb.com/ds/{size_dir}/{lang}/{code}{ext}"
+                        dst = self.covers_path / f"{rom_path.stem}{ext.lower()}"
+                        if _http_get_to_file(url, dst, timeout_sec=timeout_sec):
+                            return dst
+            # 若直接圖檔失敗，嘗試抓遊戲頁面並解析出圖片 URL
+            try:
+                page_url = f"https://www.gametdb.com/DS/{code}"
+                html_tmp = self.covers_path / f".tmp_{code}.html"
+                if _http_get_to_file(page_url, html_tmp, timeout_sec=timeout_sec):
+                    html = html_tmp.read_text(errors="ignore", encoding="utf-8", newline="")
+                    m = re.search(r'(https://art\.gametdb\.com/ds/[^"\']+\.(?:png|jpg|jpeg))', html, flags=re.I)
+                    if m:
+                        img_url = m.group(1)
+                        ext = ".png" if img_url.lower().endswith(".png") else ".jpg"
+                        dst = self.covers_path / f"{rom_path.stem}{ext}"
+                        if _http_get_to_file(img_url, dst, timeout_sec=timeout_sec):
+                            try:
+                                html_tmp.unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                            return dst
+                    try:
+                        html_tmp.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        return None
 
 
 # ---- 縮圖檔案（持久化在 thumb_dir） ---- #
@@ -1157,7 +1340,7 @@ class LauncherApp(QMainWindow):
         self.config.setdefault("last_dirs", {})["rom"] = d
         self.ed_rom.setText(d); self.config["rom_dir"] = d; save_json(self.config_path, self.config)
         self.refresh_rom_list()
-
+    
     def pick_melonds(self):
         init = self.config.get("last_dirs", {}).get("melonds") or (str(Path(self.ed_mel.text()).parent) if self.config.get("melonds_path") else os.getcwd())
         fp, _ = QFileDialog.getOpenFileName(self, tr(self, "pick_melonds_title"), init,
